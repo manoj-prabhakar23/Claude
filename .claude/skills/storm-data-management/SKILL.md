@@ -1,180 +1,145 @@
 ---
 name: storm-data-management
 description: >-
-  Reference and guidance for Content Guru storm® DATA MANAGEMENT — the storm
-  portal module for building data tables and queries, managing OUTBOUND dialler
-  campaign contact lists, and feeding data into storm FLOW. Use when a user asks
-  about storm Data Management tables, table views, queries (Select/Insert/
-  Update), searching tables, importing/exporting data, excluding numbers from
-  contact lists, OUTBOUND campaigns, completion code forms, access/rights
-  profiles, setting criteria, or how Data Management queries are referenced from
-  storm FLOW.
+  Verified reference for Content Guru storm® DATA MANAGEMENT — the storm STUDIO
+  application for building data tables and table views, querying them, and
+  supplying/enriching contact lists for storm OUTBOUND dialler campaigns. Use
+  when a user asks about storm Data Management tables, columns/data types,
+  generic (system-defined) columns, table views (standard vs outbound campaign),
+  queries (Select/Update/Delete), filters and criteria, searching tables,
+  Do-Not-Call/excluding numbers, triggered actions, importing data (manual,
+  scheduled, ad hoc FTP, third-party CRM), exporting (ad hoc/scheduled, email/
+  FTP/sFTP), OUTBOUND campaign behaviour (retries, callbacks, dynamic filtering,
+  feeding data back), the contact list layout, multiple database instances, or
+  how Data Management queries are used by the FLOW Data Management action cell.
 ---
 
 # Content Guru storm® DATA MANAGEMENT
 
-> **Source & verification status.** Built from the official help system at
-> `https://www.stormportal.us/datamanagement/assets/help/welcome.htm`
-> (Adobe RoboHelp 2022; title: *"storm DATA MANAGEMENT Help"*).
-> - **Verified** from the help's own navigation: the product name, the help
->   platform, and the **full top-level Table of Contents / topic titles** below.
-> - **Not yet verified** (the per-topic body pages load in a separate iframe that
->   was not captured): exact step-by-step procedures, field names, screenshots,
->   and the child topics inside each book. These are described at a sensible,
->   inferred level and flagged. Verify against the live help before relying on
->   exact UI steps. See "Completing this skill" at the end.
+Verified against the official **storm DATA MANAGEMENT User Guide**, Doc revision
+3.56 / product version 1.00.53 (15 Jun 2026), classification Public. Content Guru
+is part of the Redwood Technologies Group. For exhaustive step-by-step detail,
+field tables, and edge cases, read **`reference.md`** alongside this file.
 
-## What storm DATA MANAGEMENT is
+## What it is
 
-storm® DATA MANAGEMENT is a module of Content Guru's **storm** cloud Customer
-Experience platform, accessed through the storm portal. It lets administrators
-and campaign managers:
+storm DATA MANAGEMENT is a browser-based application inside **storm STUDIO**. It
+lets you create **tables** of data (typically imported from a CSV exported from a
+CRM or other system), build filtered **table views** over them, run **queries**,
+and import/export data. Its primary purpose is to create and enrich **contact
+lists for storm CONTACT:OUTBOUND dialler campaigns**, but tables/views are also
+used for general inbound/outbound call handling and reporting.
 
-- store structured data in **tables** held in the storm cloud;
-- build **queries** (Select / Insert / Update) over those tables;
-- expose query results to **storm FLOW** (the storm flow/IVR/interaction
-  designer) so live interactions can read and write data; and
-- manage **OUTBOUND campaign contact lists** — including importing contacts,
-  excluding numbers (suppression / do-not-call), completion codes, and exporting
-  results.
+It is licensed (not all users see every feature) and accessed via a supported
+browser (Edge, Firefox, Chrome). Audience: people who design/configure telephony
+services using customer data; assumes basic database + telephony knowledge.
 
-In short, it is storm's native **data + contact-list management layer**, with a
-strong orientation toward **outbound dialler campaigns**.
+### Access
 
-It is related to but distinct from **storm CKS®** (the Customer Data Platform /
-aggregation overlay across systems of record) and **storm INTEGRATE** (API
-connectors / the storm Exchange). DATA MANAGEMENT is about data held *natively
-inside storm* and the contact lists that drive OUTBOUND.
+Log in to STUDIO, then **Service Configuration > Data Management**. Regional
+STUDIO URLs:
 
-## Authoritative Table of Contents (verified)
-
-The help system's complete top-level navigation. Book entries (▸) contain
-further child topics that load dynamically and were not captured here.
-
-1. **What's New in This Release**
-2. **Welcome**
-3. ▸ **Introduction**
-   - How the DATA MANAGEMENT Application Works
-   - Queries and FLOW
-   - OUTBOUND Campaigns
-   - Completion Code Forms
-   - Access Profiles and Rights Profiles
-4. ▸ **Getting Started**
-5. ▸ **Creating Tables**
-6. ▸ **Creating Table Views**
-7. ▸ **Queries**
-8. ▸ **Searching Tables**
-9. ▸ **Excluding Numbers From Contact Lists**
-10. ▸ **Importing Data into Tables**
-11. ▸ **Exporting Data From Tables and Table Views**
-12. ▸ **During an OUTBOUND Campaign**
-13. **Appendix 1 – Setting Criteria**
-14. **Appendix 2 – The Contact List Layout**
-15. **Copyright and Disclaimer**
-
-## Key concepts and areas
-
-> Descriptions below the verified titles are inferred from the topic names and
-> general storm knowledge; treat specifics as approximate until checked.
-
-### Tables
-The core data store. A **table** holds rows of structured data (e.g. a contact
-list for a campaign, or reference/lookup data). "Creating Tables" covers defining
-a table and its columns/fields.
-
-### Table Views
-A **table view** is a defined, usually filtered or projected, view over a table
-— a way to present or work with a subset of a table's columns/rows without
-duplicating the data. "Creating Table Views" covers defining these.
-
-### Queries
-Reusable statements against a table. The three core operations are:
-- **Select** — retrieve rows (read). A Select query is referenced from storm
-  **FLOW** via a **Fetch Query Result** step so the running flow can use the data.
-- **Insert** — add rows to a table.
-- **Update** — overwrite values in existing rows.
-
-You can create a new query or reuse an existing saved one. See the dedicated
-**Queries** book and the **Queries and FLOW** topic for how flows consume them.
-
-### Searching Tables
-Finding and filtering records within a table, typically using **criteria**
-(see Appendix 1 – Setting Criteria).
-
-### OUTBOUND campaigns & contact lists
-DATA MANAGEMENT underpins outbound dialler campaigns:
-- **Importing Data into Tables** — bulk-load contacts into a table / contact list.
-- **Excluding Numbers From Contact Lists** — suppression / do-not-call handling,
-  removing numbers that must not be dialled.
-- **During an OUTBOUND Campaign** — how data behaves while a campaign runs.
-- **Completion Code Forms** — the outcome/disposition codes agents apply to
-  contacts.
-- **Appendix 2 – The Contact List Layout** — the expected structure/format of a
-  contact list.
-- **Exporting Data From Tables and Table Views** — extracting results/records.
-
-### Access Profiles and Rights Profiles
-storm's permission model controlling who can view/modify tables, queries and
-campaign data. "Access Profiles and Rights Profiles" (under Introduction) is the
-authoritative topic.
-
-### Setting Criteria (Appendix 1)
-How to build filter criteria used by searches, views, and queries.
-
-## How DATA MANAGEMENT relates to storm FLOW
-
-A common pattern: a flow built in storm FLOW reaches a point where it needs data
-held in DATA MANAGEMENT. It references a saved **Select** query and uses a
-**Fetch Query Result** step to read the returned rows/fields into flow variables,
-which then drive routing, prompts, screen behaviour, or further logic. Insert/
-Update queries let flows write back (e.g. recording an interaction outcome). The
-**"Queries and FLOW"** topic is the authoritative reference for this.
-
-## When to use this skill
-
-Use it to orient on storm DATA MANAGEMENT's scope, navigate to the right help
-topic, explain the table/table-view/query model, or explain the OUTBOUND
-contact-list lifecycle (import → exclude → run → complete → export). For exact,
-current procedures and field names, defer to the live help topics listed above.
-
-## Completing this skill (to make it fully verified)
-
-The uploaded source was the help's **Welcome shell page**, which yielded the TOC
-but not the individual topic bodies (they load from a separate iframe/content
-file). To upgrade every section above from "inferred" to "verified":
-
-1. From a browser where the portal loads, open each topic in the TOC above
-   (URLs follow the pattern
-   `https://www.stormportal.us/datamanagement/assets/help/<Folder>/<Topic>.htm`,
-   e.g. `.../Queries/Queries.htm`, `.../Importing_data_into_tables/Importing_Data_Into_Tables.htm`).
-2. Save **"Webpage, Complete"** (which includes the `_files` folder with the
-   topic body `saved_resource.html` and the `toc1.new.js` / `gdata1.new.js`
-   data files that contain the child-topic structure), or print each topic to
-   PDF, and provide those.
-3. Replace the inferred descriptions with the verified procedures, field names,
-   child topics, and any limits/screenshots.
-
-### Verified topic URL map (top level)
-
-| Topic | Path under `.../assets/help/` |
+| Region | URL |
 | --- | --- |
-| What's New in This Release | `Welcome/What_s_New_in_This_Release.htm` |
-| Welcome | `Welcome/Welcome.htm` |
-| Introduction | `Introduction/Introduction.htm` |
-| – How the DATA MANAGEMENT Application Works | `Introduction/How_the_DATA_MANAGEMENT_Application_Works.htm` |
-| – Queries and FLOW | `Introduction/Queries_and_FLOW.htm` |
-| – OUTBOUND Campaigns | `Introduction/OUTBOUND_Campaigns.htm` |
-| – Completion Code Forms | `Introduction/Completion_Code_Forms.htm` |
-| – Access Profiles and Rights Profiles | `Introduction/Access_Profiles_and_Rights_Profiles.htm` |
-| Getting Started | `Getting_started/Getting_Started.htm` |
-| Creating Tables | `Creating_tables/Creating_Tables.htm` |
-| Creating Table Views | `Creating_table_views/Creating_Table_Views.htm` |
-| Queries | `Queries/Queries.htm` |
-| Searching Tables | `Searching_Tables/Searching_Tables.htm` |
-| Excluding Numbers From Contact Lists | `Excluding_numbers_from_contact_lists/Excluding_Numbers_from_Contact_Lists.htm` |
-| Importing Data into Tables | `Importing_data_into_tables/Importing_Data_Into_Tables.htm` |
-| Exporting Data From Tables and Table Views | `Exporting_data_from_tables_and_table_views/Exporting_Data_from_Tables_and_Table_Views.htm` |
-| During an OUTBOUND Campaign | `During_an_OUTBOUND_campaign/During_an_OUTBOUND_Campaign.htm` |
-| Appendix 1 – Setting Criteria | `Appendix_1_setting_filters/Appendix_1_–_Setting_Criteria.htm` |
-| Appendix 2 – The Contact List Layout | `Appendix_2_the_contact_list_layout/Appendix_2_–_The_Contact_List_Layout.htm` |
-| Copyright and Disclaimer | `Welcome/Copyright_and_Disclaimer_US.htm` |
+| United Kingdom | `https://www.timeforstorm.com/stormstudio` (ESP: `https://www.stormesp.com/stormstudio`) |
+| United States | `https://www.stormportal.us/stormstudio` |
+| Europe | `https://www.timeforstorm.eu/stormstudio` |
+| Japan | `https://www.connectstorm.jp/stormstudio` |
+
+## Core concepts
+
+- **Table** — a structured store of rows/columns held in the storm cloud. Column
+  count, order, and data types must match the CSV used to import data. Data
+  types: **String** (≤256 chars), **Integer**, **Float**, **Date/Time** (stored
+  as `YYYY-MM-DD HH:MM:SS`), **Boolean** (`TRUE/FALSE` or `1/0`). Use **String**
+  for telephone numbers (to preserve leading zeros).
+- **Generic / system-defined columns** — predefined columns (Row ID, Last
+  result, Date last processed, Processing attempts, Scheduled callback?, Callback
+  date/time, Callback agent, Row status/sub-status, Expiry, etc.) auto-populated
+  by OUTBOUND as a campaign runs. Available to any table/view without a matching
+  CSV column. (Full table in `reference.md`.)
+- **Table view** — a subset (or all) of a table's columns, with filters. Two
+  types:
+  - **Standard** — for viewing/exporting/reporting.
+  - **Outbound campaign** — also usable as a **contact list**; its columns are
+    mapped to OUTBOUND contact-list fields and the view is assigned to a campaign
+    in STUDIO. Must map ≥1 column to the **Number** field; up to **15** columns
+    can map to Number (for multiple phone numbers per contact).
+- **Query** — three types: **Select** (retrieve/display), **Update** (batch
+  update matched rows), **Delete** (delete matched rows). You pick columns and
+  set criteria in a **WHERE** panel; criteria can be fixed or variable (set at
+  run time). Saved queries become available to the **FLOW Data Management action
+  cell**.
+- **Filters & criteria** — applied per column; combined via a **filter formula**
+  using AND/OR and brackets (AND precedes OR without brackets). Operators depend
+  on data type. Filters (unlike query criteria) also support `IN Table Column` /
+  `NOT IN Table Column` and a Current Date/Time option. (Operator lists in
+  `reference.md`.)
+- **DNC (Do Not Call)** — a manually created table of numbers not to be dialled;
+  excluded from contact lists via a `NOT IN Table Column` filter on the Number
+  column. Numbers can be auto-added via **Triggered Actions** keyed on completion
+  codes.
+- **Contact list layout** — standard OUTBOUND fields: **Name** (`@Name`),
+  **Number** (`@Number`), **Email Address** (`@Email`), **Misc 1–20**
+  (`@Misc1`–`@Misc20`). Misc9/Misc10 are reserved for agent name / call result.
+
+## How it relates to storm FLOW
+
+If your org uses storm **FLOW**, its **Data Management action cell** can run
+saved Data Management queries to retrieve/update/delete rows, and can use data
+from an external source (web service / custom API) to add or update rows. Before
+amending or deleting a query, check whether any FLOW script uses it. (See the Web
+Services Reference Guide for the Data Management REST API.)
+
+## The workspace (key buttons)
+
+Tables · Table Views · Table Queries · Table Search · **Settings** (CSV export
+scheduler, Automatic Imports, Scheduled Exports, **Triggered Actions**, Database
+Instances, feed-back config) · Help · Logout · **Save As** (new) · **Save**.
+
+## Typical OUTBOUND lifecycle
+
+1. Create a CSV outside storm; create a matching **table**; import the CSV.
+2. Create an **outbound campaign table view**; select columns and map them to
+   contact-list fields (at least Number). Add generic columns to capture results.
+3. Apply **filters** (e.g. `NOT IN` the DNC table; age/location/recency) and set
+   **order**.
+4. Provision the campaign in STUDIO against the table view.
+5. As it runs, generic columns are written back in batches (allow **5–10 min**;
+   use **Refresh**). Use **dynamic filtering**, retries, callbacks, and
+   triggered actions to manage and enrich the data live.
+6. **Export** the enriched view (ad hoc or scheduled; email/FTP/sFTP) for
+   reporting or re-targeting (e.g. re-run only 'busy'/'no answer' records).
+
+## Key limits & gotchas (verified)
+
+- **Imports are capped at 1,000,000 rows per table.** Once reached, no more rows
+  can be imported.
+- **String columns: 256 char max.** CSV must be **UTF-8**, `.CSV` extension,
+  comma-separated, CR/LF line endings, no inter-field spaces, quote fields
+  containing commas.
+- **You cannot delete a column** once data is imported or once the column is used
+  in a table view. You can still add new columns.
+- **You cannot delete a table** that has table views — delete the views first.
+  Can't delete a view referenced by a provisioned service/campaign — decommission
+  it first.
+- **Primary keys** make values unique and enable update/delete-on-match imports,
+  but slow imports.
+- **A table view can be used by only one campaign at a time** (but two
+  non-overlapping campaigns can share a table).
+- For telephone-number columns, scheduled imports validate 10–11 chars starting
+  with `0`; ask support to extend this to manual imports / barred-prefix checks.
+- Excel strips leading zeros from numbers — import exported CSVs as **Text** for
+  phone columns (see `reference.md`).
+
+## See also
+
+`reference.md` — full procedures and field tables for: data types & table
+creation; the complete generic-column list; table views & column mapping;
+multiple numbers; queries (build/run/edit); searching tables; excluding numbers
+& triggered actions; importing (manual primary-key matrix, scheduled `.CSV/
+.REPLACE/.UPDATE/.UPDATEONLY/.DELETE/.DELETEONLY` extensions, ad hoc FTP,
+third-party CRM with SQL, results/summary/failure files and result codes);
+exporting (naming, scheduled, distribution); OUTBOUND retries/callbacks/dynamic
+filtering/feeding data back; criteria operators per data type; contact list
+layout; multiple database instances.
