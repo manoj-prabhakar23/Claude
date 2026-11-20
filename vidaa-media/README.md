@@ -54,6 +54,28 @@ The server scans your folders, works out titles, years, languages, posters and a
 
 > **Tip:** give the computer a fixed IP address in your router settings (often called "DHCP reservation") so the bookmark keeps working.
 
+### Optional: a Home Cinema icon on the VIDAA home screen (unofficial)
+
+Hisense has no official way to add your own app to the home screen. The VIDAA App Store only accepts apps from approved partners. The community has found two unofficial methods. Neither is supported by Hisense, and which one works depends on your TV's firmware:
+
+- **Older firmware (about 2022):** open the TV Browser and type `hisense://debug`. If an install page appears, enter the name `Home Cinema`, the server address (e.g. `http://192.168.1.20:8080`) and the icon `http://192.168.1.20:8080/icon.png`, then press Install.
+- **Newer firmware (2024 onwards):** the debug page is blocked. Install works only through the TV's hidden `Hisense_installApp()` function, which the TV allows only on pages from `vidaahub.com`. Community tools such as [vidaa-appstore](https://github.com/trialuser/vidaa-appstore) and [vidaa-custom-app](https://github.com/arashbehmand/vidaa-custom-app) run a small local server that pretends to be that site. You temporarily point the TV's DNS at it, install, then set the DNS back and restart the TV.
+
+Notes:
+- The community examples install public `https://` web addresses. Whether a home address like `http://192.168.1.20:8080` is accepted hasn't been confirmed. If it isn't, the Browser bookmark is the fallback.
+- Give the server computer a fixed IP address, or the icon stops working when the IP changes.
+- Pressing **BACK** on the main screen closes the app, as installed VIDAA apps must.
+- These tools change your TV's network settings. Read their code, use them only on your own home network, and accept that a firmware update may remove the icon or block the method.
+
+### Can the TV's own USB port be used?
+
+Not by this app, and not by any third-party VIDAA app as far as we can tell. VIDAA gives apps **no documented way to read a USB drive plugged into the TV**. The TV's built-in **Media** player can still play that drive, just without posters, language filters or albums.
+
+To keep the setup "plug the drive in near the TV and forget it", you can use either of these:
+
+- **Raspberry Pi behind the TV (recommended):** plug the USB drive into a Raspberry Pi 4/5 (or any small always-on computer), run `./start.sh` on it, and make it start at boot. Use a powered USB hub or a self-powered drive for 2.5"/3.5" hard disks.
+- **Router with a USB port:** many routers share a plugged-in drive as a network folder. Map or mount that folder on the computer running the server and add it to `roots` in `config.json`.
+
 ### Using it with the remote
 
 | Button | Main screens | While a movie plays |

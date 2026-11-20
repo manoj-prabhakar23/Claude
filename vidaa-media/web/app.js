@@ -673,6 +673,10 @@
     if (S.tab === 'folders' && S.focus && !hasClass(S.focus, 'tab') && folderUp()) return true;
     var activeTab = $('tabs').querySelector('.active');
     if (S.focus !== activeTab) { $('content').scrollTop = 0; setFocus(activeTab); return true; }
+    // Already on the tabs: leave the app. Installed VIDAA apps run full-screen without
+    // a browser bar and must close themselves; in a normal browser tab this is ignored.
+    stopMusic();
+    try { window.close(); } catch (e) { /* not allowed */ }
     return false;
   }
 
