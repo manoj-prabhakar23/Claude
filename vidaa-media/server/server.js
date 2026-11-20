@@ -108,7 +108,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascri
   '.mp3': 'audio/mpeg', '.flac': 'audio/flac', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav', '.wma': 'audio/x-ms-wma', '.aiff': 'audio/aiff', '.aif': 'audio/aiff' };
 
 function send(res, code, body, type, extra) {
-  res.writeHead(code, Object.assign({ 'Content-Type': type || 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' }, extra || {}));
+  res.writeHead(code, Object.assign({ 'Content-Type': type || 'text/plain; charset=utf-8' }, extra || {}));
   res.end(body);
 }
 const json = (res, obj, code) => send(res, code || 200, JSON.stringify(obj), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store' });
@@ -116,7 +116,7 @@ const json = (res, obj, code) => send(res, code || 200, JSON.stringify(obj), 'ap
 function serveFile(req, res, file, type, cache) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'Not found');
-    const headers = { 'Content-Type': type || MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Access-Control-Allow-Origin': '*', 'Cache-Control': cache || 'no-cache' };
+    const headers = { 'Content-Type': type || MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'Cache-Control': cache || 'no-cache' };
     const range = req.headers.range;
     if (range) {
       const m = /bytes=(\d*)-(\d*)/.exec(range);
@@ -279,8 +279,14 @@ async function serveSubtitle(req, res, sid, offset) {
 }
 
 // ---------- on-the-fly remux (MKV/AVI/... -> fragmented MP4 the TV browser can play) ----------
+let activeRemux = 0;
+const MAX_REMUX = 3;
 function serveRemux(req, res, item, t, audioIndex) {
   if (!ffmpegOk) return send(res, 501, 'ffmpeg is not installed on the server');
+  if (activeRemux >= MAX_REMUX) return send(res, 503, 'Too many videos are being converted right now - try again in a moment', null, { 'Retry-After': '5' });
+  activeRemux++;
+  let released = false;
+  const release = () => { if (!released) { released = true; activeRemux--; } };
   const copyVideo = ['h264', 'hevc'].includes(item.vcodec);
   const a = [];
   if (t > 0) a.push('-ss', String(t));
@@ -289,13 +295,14 @@ function serveRemux(req, res, item, t, audioIndex) {
   if (item.vcodec === 'hevc') a.push('-tag:v', 'hvc1');
   a.push('-c:a', 'aac', '-ac', '2', '-b:a', '192k', '-f', 'mp4', '-movflags', 'frag_keyframe+empty_moov+default_base_moof', 'pipe:1');
   const ff = spawn(cfg.ffmpeg, a, { stdio: ['ignore', 'pipe', 'pipe'] });
-  res.writeHead(200, { 'Content-Type': 'video/mp4', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+  res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' });
   ff.stdout.pipe(res);
   ff.stderr.on('data', (d) => process.env.DEBUG && process.stderr.write(d));
-  const kill = () => { try { ff.kill('SIGKILL'); } catch (e) { /* gone */ } };
+  const kill = () => { release(); try { ff.kill('SIGKILL'); } catch (e) { /* gone */ } };
   req.on('close', kill);
   res.on('close', kill);
-  ff.on('close', () => res.end());
+  ff.on('close', () => { release(); res.end(); });
+  ff.on('error', () => { release(); res.destroy(); });
 }
 
 // ---------- API payloads ----------
@@ -318,7 +325,7 @@ function folderPayload(id) {
   const f = lib.folders.get(id);
   if (!f) return null;
   return {
-    id: f.id, name: f.name, parentId: f.root ? null : f.parentId, path: f.path,
+    id: f.id, name: f.name, parentId: f.root ? null : f.parentId,
     dirs: f.dirs.map((d) => { const x = lib.folders.get(d); return { id: x.id, name: x.name, count: x.count }; }),
     files: f.files.map((fid) => { const x = lib.items.get(fid); return { id: x.id, kind: x.kind, title: x.kind === 'episode' ? `S${x.season}E${x.episode} ${x.title}` : x.title, year: x.year, langs: x.langs, res: x.res, duration: x.duration, albumId: x.albumId, showId: x.showId, name: path.basename(x.path) }; }),
   };
@@ -452,9 +459,13 @@ const server = http.createServer(async (req, res) => {
   const p = decodeURIComponent(u.pathname);
   try {
     if (p === '/admin' || p === '/admin/' || p === '/admin.html' || p.startsWith('/api/admin/')) return handleAdmin(req, res, p === '/admin.html' ? '/admin' : p, u);
-    if (req.method === 'OPTIONS') return send(res, 204, '', null, { 'Access-Control-Allow-Methods': 'GET,POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Private-Network': 'true' });
+    if (req.method === 'OPTIONS') {
+      // Only the status probe is shared cross-origin (Vega connect screen). Nothing else, and no custom headers.
+      if (p === '/api/status') return send(res, 204, '', null, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Private-Network': 'true' });
+      return send(res, 204, '');
+    }
     if (p === '/api/library') return json(res, libraryPayload());
-    if (p === '/api/status') return json(res, { scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, ffmpeg: ffmpegOk, ffprobe: lib.prober.available, summary: lib.summary() });
+    if (p === '/api/status') return send(res, 200, JSON.stringify({ scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, ffmpeg: ffmpegOk, ffprobe: lib.prober.available, summary: lib.summary() }), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
     if (p === '/api/folder') { const f = folderPayload(u.query.id); return f ? json(res, f) : json(res, { error: 'not found' }, 404); }
     if (p === '/api/state') return json(res, state);
     if (p === '/api/progress' && req.method === 'POST') {
@@ -492,7 +503,7 @@ const server = http.createServer(async (req, res) => {
     // static web app
     const rel = p === '/' ? 'index.html' : p.replace(/^\/+/, '');
     const file = path.normalize(path.join(WEB_DIR, rel));
-    if (!file.startsWith(WEB_DIR)) return send(res, 403, 'Forbidden');
+    if (file !== WEB_DIR && !file.startsWith(WEB_DIR + path.sep)) return send(res, 403, 'Forbidden');
     return serveFile(req, res, file, null, 'no-cache');
   } catch (e) {
     console.error(e);
