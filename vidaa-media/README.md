@@ -9,6 +9,8 @@ Watch the **movies** (and TV shows and music) on your own hard drive or USB stic
 - **Folders** view for browsing the drive as it is.
 - Made for the **TV remote**: arrows, OK, BACK, Play/Pause, FF/RW and the colored buttons (🔴 Movies, 🟢 TV Shows, 🟡 Music, 🔵 Folders).
 
+> **Also on Amazon Fire TV Stick / Android TV:** see [`../firetv-app`](../firetv-app/README.md). That version can play a USB drive plugged straight into the Fire TV, and it plays MKV files with audio-language switching without needing ffmpeg. Once the Fire TV app has been built and copied to `dist/HomeCinema-FireTV.apk`, this server also hands it out at `http://<this-pc>:8080/app.apk` for easy install with the Downloader app.
+
 ## How it works (and why there are two parts)
 
 VIDAA doesn't let third-party apps read a USB drive that's plugged into the TV itself. So the app has two parts:

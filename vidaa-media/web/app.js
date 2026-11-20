@@ -10,6 +10,9 @@
     NEXT: [176, 425], PREV: [177, 424], RED: [403], GREEN: [404], YELLOW: [405], BLUE: [406], PGUP: [33, 427], PGDN: [34, 428] };
   function keyName(code) { for (var k in K) if (K[k].indexOf(code) >= 0) return k; return null; }
 
+  // Running inside the Fire TV / Android app? It injects window.HCAndroid and plays video natively.
+  var NATIVE = !!window.HCAndroid;
+
   // ---------------------------------------------------------------- utils
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -310,7 +313,9 @@
     if (!itemsForTab().length) {
       var what = { movies: 'movies', shows: 'TV shows', music: 'music albums' }[S.tab];
       if (S.lib.scanning) renderEmpty('Scanning your drives…', 'Your library will appear here in a moment.');
-      else renderEmpty('No ' + what + ' found', 'Plug in your USB drive on the computer running the server, or add folders to config.json. Then press Rescan.');
+      else renderEmpty('No ' + what + ' found', NATIVE && window.HCAndroid.mode && window.HCAndroid.mode() === 'local'
+        ? 'Plug your USB drive into the Fire TV (through an OTG adapter or hub), or press \u2630 Sources to connect to your PC server.'
+        : 'Plug in your USB drive on the computer running the server, or add folders to config.json. Then press Rescan.');
     } else if (S.tab === 'movies') {
       var cw = continueWatching().filter(function (c2) { return c2.kind === 'movie' && (!lang || c2.x.langs.indexOf(lang) >= 0); });
       if (cw.length) {
@@ -386,6 +391,7 @@
     lazyLoad();
   }
   function closeDetail() {
+    S.detail = null;
     addClass($('detail'), 'hidden');
     $('detail').innerHTML = '';
     S.layer = null;
@@ -396,6 +402,7 @@
 
   function showMovie(m) {
     if (!m) return;
+    S.detail = { kind: 'movie', id: m.id };
     var p = S.progress[m.id];
     var audio = langNamesOfAudio(m);
     var opts = { audio: 0, sub: -1 };
@@ -426,6 +433,7 @@
 
   function showShow(s) {
     if (!s) return;
+    S.detail = { kind: 'show', id: s.id };
     var html = '<div class="backdrop" style="background-image:url(' + img(s.id) + ')"></div><div class="dwrap"><div class="dposter"><div class="art"><img src="' + img(s.id) + '" alt=""></div></div><div class="dinfo">' +
       '<div class="dtitle">' + esc(s.title) + '</div><div class="dmeta"><span>' + s.episodes.length + ' episodes</span></div><div class="dlangs">' + badges(s, 6) + '</div><div class="list">';
     var season = null;
@@ -504,9 +512,10 @@
   function playVideo(item, from, opts) {
     opts = opts || {};
     if (Music.current) $('audio').pause();
+    if (NATIVE) { playNative(item, from, opts); return; }
     V.item = item; V.audio = opts.audio || 0; V.sub = opts.sub == null ? -1 : opts.sub; V.triedRemux = false;
     var needRemux = !item.direct || V.audio > 0;
-    if (needRemux && !S.lib.ffmpeg) { needRemux = false; if (V.audio > 0) toast('Install ffmpeg on the server to switch audio language'); }
+    if (needRemux && !S.lib.ffmpeg && !NATIVE) { needRemux = false; if (V.audio > 0) toast('Install ffmpeg on the server to switch audio language'); }
     $('osdTitle').innerHTML = esc(item.show ? item.show.title + ' — S' + item.season + 'E' + item.episode + ' ' + item.title : item.title);
     $('osdInfo').innerHTML = esc([item.year, item.res, (item.langs || []).join(', ')].filter(Boolean).join(' · '));
     rmClass($('player'), 'hidden');
@@ -516,6 +525,18 @@
     showOsd();
     clearInterval(V.saveTimer);
     V.saveTimer = setInterval(saveProgress, 10000);
+  }
+
+  // Hand playback to the app's native player (ExoPlayer): MKV, audio languages, subtitles.
+  function playNative(item, from, opts) {
+    var list = item.show ? item.show.episodes : [item];
+    var index = Math.max(0, list.indexOf(item));
+    var items = list.map(function (x) {
+      return { id: x.id, title: x.show ? x.show.title + ' \u2014 S' + x.season + 'E' + x.episode + ' ' + x.title : x.title, subtitle: x.year ? String(x.year) : '', subs: x.subs || [] };
+    });
+    var audioPos = -1;
+    each(item.audio || [], function (a, i) { if (opts.audio != null && a.index === opts.audio && opts.audio > 0) audioPos = i; });
+    window.HCAndroid.playVideo(JSON.stringify({ items: items, index: index, start: from || 0, audio: audioPos, sub: opts.sub == null ? -1 : opts.sub }));
   }
 
   function startStream(at, remux) {
@@ -684,6 +705,9 @@
     var k = keyName(e.keyCode);
     if (!k) return;
     e.preventDefault();
+    handleKey(k);
+  }, true);
+  function handleKey(k) {
     if (S.layer === 'player') { playerKey(k); return; }
     switch (k) {
       case 'LEFT': case 'RIGHT': case 'UP': case 'DOWN': move(k); break;
@@ -700,7 +724,21 @@
       case 'YELLOW': setTabAndFocus('music'); break;
       case 'BLUE': setTabAndFocus('folders'); break;
     }
-  }, true);
+  }
+  // Hooks used by the Fire TV / Android app (it forwards BACK and media keys here).
+  window.hcKey = function (name) { handleKey(name); };
+  window.hcBack = function () { if (S.layer === 'player') { playerKey('BACK'); return true; } return back(); };
+  window.hcRefresh = function () {
+    http('GET', '/api/state', null, function (err, st) {
+      if (err || !st) return;
+      S.progress = st.progress || {};
+      if (S.layer === 'detail' && S.detail) {
+        var rf = detailReturnFocus, d = S.detail;
+        if (d.kind === 'movie') showMovie(S.idx[d.id]); else if (d.kind === 'show') showShow(S.showIdx[d.id]);
+        detailReturnFocus = rf;
+      } else if (!S.layer) render(true);
+    });
+  };
   function setTabAndFocus(t) { if (S.layer === 'detail') closeDetail(); setTab(t); setFocus($('tabs').querySelector('.active')); }
 
   // Some TV browsers send BACK as browser history navigation instead of a key.
@@ -727,6 +765,13 @@
   each(qsa($('tabs'), '.tab'), function (t) {
     t.onclick = function () { setTab(t.getAttribute('data-tab')); setFocus(t); };
   });
+  if (NATIVE && window.HCAndroid.openSources) {
+    var src = document.createElement('div');
+    src.className = 'btn small f'; src.id = 'sourcesBtn'; src.style.marginRight = '.8rem';
+    src.innerHTML = '&#9776; Sources';
+    src.onclick = function () { window.HCAndroid.openSources(); };
+    $('rescanBtn').parentNode.insertBefore(src, $('rescanBtn'));
+  }
   $('rescanBtn').onclick = function () { http('POST', '/api/rescan', null, function () { toast('Rescanning drives… the library refreshes automatically'); }); };
   function clock() { var d = new Date(), h = d.getHours(), m = d.getMinutes(); $('clock').innerHTML = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; }
   setInterval(clock, 15000); clock();

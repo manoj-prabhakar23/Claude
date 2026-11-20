@@ -359,6 +359,12 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/rescan' && req.method === 'POST') { rescan('requested from TV').catch(console.error); return json(res, { ok: true }); }
     if (p === '/api/catalog.csv') return send(res, 200, '﻿' + catalogCsv(u.query.root), 'text/csv; charset=utf-8', { 'Content-Disposition': 'attachment; filename="catalog.csv"' });
 
+    // Fire TV / Android app download: type http://<this-pc>:8080/app.apk into the Downloader app.
+    if (p === '/app.apk') {
+      const apk = path.join(APP_DIR, 'dist', 'HomeCinema-FireTV.apk');
+      return serveFile(req, res, apk, 'application/vnd.android.package-archive', 'no-cache');
+    }
+
     let m;
     if ((m = /^\/media\/([0-9a-f]{16})/.exec(p))) {
       const it = lib.items.get(m[1]);
