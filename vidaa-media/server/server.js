@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { Library } = require('./scanner');
 const { readTags } = require('./tags');
+const { GuestAuth } = require('./auth');
 
 // ---------- configuration ----------
 const args = process.argv.slice(2);
@@ -96,6 +97,15 @@ setInterval(() => {
 if (cfg.rescanMinutes > 0) setInterval(() => { if (!lib.scanning) rescan('scheduled').catch(console.error); }, cfg.rescanMinutes * 60000);
 
 // ---------- persistent state (resume positions) ----------
+// ---------- guest PIN ----------
+const guest = new GuestAuth({
+  getPin: () => cfg.pin || null,
+  setPin: (v) => { cfg.pin = v; saveConfig(); },
+  devicesFile: path.join(cfg.dataDir, 'devices.json'),
+});
+// Paths a device may load before entering the PIN.
+const PIN_PUBLIC = new Set(['/pin', '/api/pin', '/api/status', '/app.apk', '/icon.png', '/favicon.ico']);
+
 const statePath = path.join(cfg.dataDir, 'state.json');
 let state = { progress: {} };
 try { state = Object.assign(state, JSON.parse(fs.readFileSync(statePath, 'utf8'))); } catch (e) { /* first run */ }
@@ -374,7 +384,7 @@ function saveConfig() {
   const target = cfgPath || path.join(APP_DIR, 'config.json');
   let current = {};
   try { current = JSON.parse(fs.readFileSync(target, 'utf8')); } catch (e) { /* new file */ }
-  const out = Object.assign(current, { port: cfg.port, roots: cfg.roots, autoUsb: cfg.autoUsb, rescanMinutes: cfg.rescanMinutes });
+  const out = Object.assign(current, { port: cfg.port, roots: cfg.roots, autoUsb: cfg.autoUsb, rescanMinutes: cfg.rescanMinutes, pin: cfg.pin || null });
   fs.writeFileSync(target, JSON.stringify(out, null, 2));
   return target;
 }
@@ -415,6 +425,7 @@ async function handleAdmin(req, res, p, u) {
       usbDrives: detectUsbDrives().map((d) => d.path), activeRoots: lib.summary().roots, tvUrls: tvUrls(),
       ffmpeg: ffmpegOk, ffprobe: lib.prober.available, scanning: lib.scanning, filesScanned: lib.scanProgress.files, summary: lib.summary(),
       scannedAt: lib.scannedAt, platform: process.platform, configFile: cfgPath || path.join(APP_DIR, 'config.json'),
+      pinEnabled: guest.enabled, devices: guest.list(),
     });
   }
   if (p === '/api/admin/config' && req.method === 'POST') {
@@ -431,6 +442,19 @@ async function handleAdmin(req, res, p, u) {
     const file = saveConfig();
     rescan('settings changed').catch(console.error);
     return json(res, { ok: true, configFile: file });
+  }
+  if (p === '/api/admin/pin' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (b.pin === null || b.pin === '') { guest.setPin(null); return json(res, { ok: true, pinEnabled: false }); }
+    if (!/^\d{4,8}$/.test(String(b.pin))) return json(res, { error: 'The PIN must be 4 to 8 digits' }, 400);
+    guest.setPin(String(b.pin));
+    guest.forget('*'); // a new PIN signs every device out
+    return json(res, { ok: true, pinEnabled: true });
+  }
+  if (p === '/api/admin/forget' && req.method === 'POST') {
+    const b = await readBody(req);
+    guest.forget(String(b.id || ''));
+    return json(res, { ok: true });
   }
   if (p === '/api/admin/browse') {
     try { return json(res, browseDir(u.query.path)); } catch (e) { return json(res, { error: 'Cannot open that folder (' + e.code + ')' }, 400); }
@@ -464,8 +488,20 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/status') return send(res, 204, '', null, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Private-Network': 'true' });
       return send(res, 204, '');
     }
+    // Guest PIN: devices on the network (not this PC) must have entered it once.
+    if (p === '/pin') return serveFile(req, res, path.join(WEB_DIR, 'pin.html'), null, 'no-cache');
+    if (p === '/api/pin' && req.method === 'POST') {
+      if (!guest.enabled) return json(res, { ok: true });
+      const r = guest.attempt(req, (await readBody(req)).pin);
+      if (r.ok) return send(res, 200, JSON.stringify({ ok: true }), 'application/json; charset=utf-8', { 'Set-Cookie': guest.cookieHeader(r.token), 'Cache-Control': 'no-store' });
+      return json(res, { ok: false, wait: r.wait || 0, left: r.left }, r.wait ? 429 : 403);
+    }
+    if (guest.enabled && !PIN_PUBLIC.has(p) && !isLocalRequest(req) && !guest.check(req)) {
+      if (p === '/' || p === '/index.html') { res.writeHead(302, { Location: '/pin', 'Cache-Control': 'no-store' }); return res.end(); }
+      if (/^\/(api|media|remux|img|sub)\//.test(p) || p === '/api/library') return json(res, { error: 'pin', pin: true }, 401);
+    }
     if (p === '/api/library') return json(res, libraryPayload());
-    if (p === '/api/status') return send(res, 200, JSON.stringify({ scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, ffmpeg: ffmpegOk, ffprobe: lib.prober.available, summary: lib.summary() }), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+    if (p === '/api/status') return send(res, 200, JSON.stringify({ scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, pin: guest.enabled }), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
     if (p === '/api/folder') { const f = folderPayload(u.query.id); return f ? json(res, f) : json(res, { error: 'not found' }, 404); }
     if (p === '/api/state') return json(res, state);
     if (p === '/api/progress' && req.method === 'POST') {

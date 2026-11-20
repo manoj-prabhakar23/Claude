@@ -72,6 +72,17 @@
   </section>
 
   <section class="card">
+    <h2>Guest PIN</h2>
+    <p class="sub" id="pinLine">Loading&hellip;</p>
+    <div class="actions" style="margin-top:0">
+      <input id="pinInput" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="4&ndash;8 digits" style="font:inherit;font-size:18px;letter-spacing:4px;width:160px;color:var(--text);background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:7px 10px">
+      <button class="primary" id="pinSet">Set PIN</button>
+      <button id="pinOff" style="display:none">Turn off PIN</button>
+    </div>
+    <div id="devices" style="margin-top:14px"></div>
+  </section>
+
+  <section class="card">
     <h2>Library</h2>
     <p class="sub" id="scanLine">Loading&hellip;</p>
     <div class="stats" id="stats"></div>
@@ -148,6 +159,20 @@
       b.onclick = function () { var roots = cfg.roots.slice(); roots.splice(Number(b.getAttribute('data-rm')), 1); save({ roots: roots }, 'Folder removed'); };
     });
 
+    $('pinLine').innerHTML = cfg.pinEnabled
+      ? '<span class="pill ok">On</span> TVs, phones and other devices must enter the PIN once. This computer never needs it. Setting a new PIN signs every device out.'
+      : '<span class="pill warn">Off</span> Anyone on your Wi-Fi can watch your library. Set a PIN to keep guests out.';
+    $('pinSet').textContent = cfg.pinEnabled ? 'Change PIN' : 'Set PIN';
+    $('pinOff').style.display = cfg.pinEnabled ? '' : 'none';
+    $('devices').innerHTML = !cfg.pinEnabled ? '' : (cfg.devices.length
+      ? '<div style="font-weight:600;margin-bottom:4px">Signed-in devices</div>' + cfg.devices.map(function (d) {
+          return '<div class="row"><span class="path" style="font-family:inherit">' + esc(d.name) + ' <span class="pill">' + esc(d.ip) + '</span></span><span class="pill">last used ' + new Date(d.lastSeen).toLocaleString() + '</span><button class="link" data-forget="' + esc(d.id) + '">Sign out</button></div>';
+        }).join('') + '<div class="actions"><button class="link" data-forget="*" style="padding-left:0">Sign out all devices</button></div>'
+      : '<div class="empty">No devices signed in yet.</div>');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-forget]'), function (b) {
+      b.onclick = function () { api('POST', '/api/admin/forget', { id: b.getAttribute('data-forget') }).then(function () { toast('Signed out'); load(); }).catch(function (e) { toast(e.message, true); }); };
+    });
+
     $('autoUsb').checked = cfg.autoUsb;
     $('usb').innerHTML = cfg.usbDrives.length ? cfg.usbDrives.map(function (d) { return '<div class="row"><span class="path">' + esc(d) + '</span><span class="pill' + (cfg.autoUsb ? ' ok' : '') + '">' + (cfg.autoUsb ? 'in library' : 'not added') + '</span></div>'; }).join('') : '<div class="empty">No USB drives detected right now.' + (cfg.platform === 'win32' ? ' On Windows every drive except C: counts as a USB/extra drive.' : '') + '</div>';
 
@@ -170,6 +195,16 @@
     return api('POST', '/api/admin/config', body).then(function () { toast(msg || 'Saved - rescanning your library'); return load(); }).catch(function (e) { toast(e.message, true); });
   }
 
+  $('pinSet').onclick = function () {
+    var v = $('pinInput').value.trim();
+    if (!/^\d{4,8}$/.test(v)) return toast('The PIN must be 4 to 8 digits', true);
+    api('POST', '/api/admin/pin', { pin: v }).then(function () { $('pinInput').value = ''; toast('PIN saved - devices will be asked for it'); load(); }).catch(function (e) { toast(e.message, true); });
+  };
+  $('pinInput').onkeydown = function (e) { if (e.key === 'Enter') $('pinSet').onclick(); };
+  $('pinOff').onclick = function () {
+    if (!confirm('Turn off the PIN? Anyone on your Wi-Fi will be able to watch your library.')) return;
+    api('POST', '/api/admin/pin', { pin: null }).then(function () { toast('PIN turned off'); load(); }).catch(function (e) { toast(e.message, true); });
+  };
   $('autoUsb').onchange = function () { save({ autoUsb: $('autoUsb').checked }, $('autoUsb').checked ? 'USB drives will be added automatically' : 'USB drives will be ignored'); };
   $('catRoot').onchange = updateCatalogLinks;
   $('catFile').onchange = updateCatalogLinks;

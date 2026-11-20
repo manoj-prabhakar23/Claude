@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Cinema PIN</title>
+<link rel="icon" href="icon.png">
+<style>
+  html { font-size: calc(100vw / 120); }
+  @media (max-aspect-ratio: 1/1) { html { font-size: calc(100vw / 40); } }
+  html, body { margin: 0; height: 100%; background: #0d1016; color: #eef1f6; font-family: "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; }
+  .wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 0 1.5rem; box-sizing: border-box; }
+  .logo { width: 3.6rem; height: 3.6rem; line-height: 3.6rem; text-align: center; border-radius: .9rem; background: #f5b335; color: #111; font-size: 1.7rem; margin-bottom: 1.2rem; }
+  h1 { font-size: 2.4rem; margin: 0 0 .5rem; }
+  p { font-size: 1.3rem; color: #9aa3b5; margin: 0 0 2rem; text-align: center; }
+  .dots { display: flex; gap: 1.1rem; margin-bottom: 1.4rem; min-height: 1.8rem; }
+  .dot { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: .18rem solid #4a5263; }
+  .dot.on { background: #f5b335; border-color: #f5b335; }
+  #msg { font-size: 1.25rem; min-height: 1.8rem; margin-bottom: 1rem; color: #ff8a8a; text-align: center; }
+  .pad { display: grid; grid-template-columns: repeat(3, 6.2rem); gap: .9rem; }
+  .key { height: 5rem; border-radius: 1rem; background: #202634; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 600; border: .2rem solid transparent; cursor: pointer; user-select: none; }
+  .key.ok { background: #f5b335; color: #141414; font-size: 1.5rem; }
+  .key.focus { border-color: #fff; box-shadow: 0 0 1.4rem rgba(255,255,255,.3); transform: scale(1.06); }
+  .key.disabled { opacity: .35; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">&#9654;</div>
+  <h1>Enter PIN</h1>
+  <p>This Home Cinema library is protected. Ask the owner for the PIN.<br>You only need to enter it once on this device.</p>
+  <div class="dots" id="dots"></div>
+  <div id="msg"></div>
+  <div class="pad" id="pad"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var MAX = 8, pin = '', busy = false, waitTimer = null, lockedUntil = 0;
+  var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];
+  var pad = document.getElementById('pad'), dotsEl = document.getElementById('dots'), msg = document.getElementById('msg');
+  var els = keys.map(function (k) {
+    var d = document.createElement('div');
+    d.className = 'key' + (k === 'ok' ? ' ok' : '');
+    d.innerHTML = k === 'del' ? '&#9003;' : k === 'ok' ? 'OK' : k;
+    d.onclick = function () { press(k); };
+    pad.appendChild(d);
+    return d;
+  });
+  var cur = 0;
+  function focus(i) { els[cur].classList.remove('focus'); cur = i; els[cur].classList.add('focus'); }
+  function dots() {
+    var n = Math.max(4, pin.length), h = '';
+    for (var i = 0; i < n; i++) h += '<div class="dot' + (i < pin.length ? ' on' : '') + '"></div>';
+    dotsEl.innerHTML = h;
+  }
+  function say(t) { msg.textContent = t || ''; }
+
+  function press(k) {
+    if (busy || Date.now() < lockedUntil) return;
+    if (k === 'del') { pin = pin.slice(0, -1); say(''); }
+    else if (k === 'ok') { submit(); return; }
+    else if (pin.length < MAX) { pin += k; say(''); }
+    dots();
+  }
+
+  function lock(sec) {
+    lockedUntil = Date.now() + sec * 1000;
+    els.forEach(function (e) { e.classList.add('disabled'); });
+    clearInterval(waitTimer);
+    var tick = function () {
+      var left = Math.ceil((lockedUntil - Date.now()) / 1000);
+      if (left <= 0) { clearInterval(waitTimer); els.forEach(function (e) { e.classList.remove('disabled'); }); say(''); return; }
+      say('Too many wrong tries. Try again in ' + (left >= 60 ? Math.ceil(left / 60) + ' min' : left + ' s') + '.');
+    };
+    tick(); waitTimer = setInterval(tick, 1000);
+  }
+
+  function submit() {
+    if (pin.length < 4) { say('The PIN has at least 4 digits'); return; }
+    busy = true;
+    var x = new XMLHttpRequest();
+    x.open('POST', '/api/pin', true);
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) return;
+      busy = false;
+      var r = {}; try { r = JSON.parse(x.responseText); } catch (e) { /* ignore */ }
+      if (x.status === 200 && r.ok) { say(''); msg.style.color = '#4ad295'; msg.textContent = 'Welcome!'; location.replace('/'); return; }
+      pin = ''; dots();
+      if (r.wait) lock(r.wait);
+      else say('Wrong PIN' + (r.left != null ? (r.left > 0 ? ' — ' + r.left + ' tries left' : '') : ''));
+    };
+    x.send(JSON.stringify({ pin: pin }));
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode;
+    // Number buttons on the remote: type the digit and move to OK, so the OK button submits.
+    if (k >= 48 && k <= 57) { press(String(k - 48)); focus(11); e.preventDefault(); return; }
+    if (k >= 96 && k <= 105) { press(String(k - 96)); focus(11); e.preventDefault(); return; }
+    var col = cur % 3, row = Math.floor(cur / 3);
+    if (k === 37 && col > 0) focus(cur - 1);
+    else if (k === 39 && col < 2) focus(cur + 1);
+    else if (k === 38 && row > 0) focus(cur - 3);
+    else if (k === 40 && row < 3) focus(cur + 3);
+    else if (k === 13) press(keys[cur]);
+    else if (k === 8 || k === 46) press('del');
+    else if (k === 27 || k === 461 || k === 10009) {
+      // BACK: leave the app on Fire TV (Vega) / Android, otherwise just clear
+      try { if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'exit' })); } catch (err) { /* not in app */ }
+      pin = ''; dots();
+    } else return;
+    e.preventDefault();
+  });
+
+  dots(); focus(4); // start on "5", the centre of the keypad
+})();
+</script>
+</body>
+</html>

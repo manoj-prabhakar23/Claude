@@ -216,7 +216,9 @@ class MainActivity : Activity() {
     inner class Bridge {
         @JavascriptInterface fun playVideo(payload: String) {
             val base = baseUrl
-            ui.post { startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("payload", payload).putExtra("base", base)) }
+            // Pass the guest-PIN sign-in cookie on to the native player (PC server mode).
+            val cookie = try { android.webkit.CookieManager.getInstance().getCookie(base) } catch (e: Exception) { null }
+            ui.post { startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("payload", payload).putExtra("base", base).putExtra("cookie", cookie)) }
         }
         @JavascriptInterface fun openSources() { ui.post { showSources() } }
         @JavascriptInterface fun exitApp() { ui.post { finish() } }

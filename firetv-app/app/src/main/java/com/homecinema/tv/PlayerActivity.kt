@@ -18,6 +18,8 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -35,6 +37,7 @@ class PlayerActivity : Activity() {
     private lateinit var player: ExoPlayer
     private lateinit var view: PlayerView
     private lateinit var base: String
+    private var cookie: String? = null
     private val ui = Handler(Looper.getMainLooper())
     private var pendingAudio = -1
     private var reportedEnd = false
@@ -47,6 +50,7 @@ class PlayerActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or WindowManager.LayoutParams.FLAG_FULLSCREEN)
         base = intent.getStringExtra("base") ?: MainActivity.LOCAL_URL
+        cookie = intent.getStringExtra("cookie")
         val p = JSONObject(intent.getStringExtra("payload") ?: "{}")
         val items = p.optJSONArray("items")
         val index = p.optInt("index", 0)
@@ -54,7 +58,12 @@ class PlayerActivity : Activity() {
         pendingAudio = p.optInt("audio", -1)
 
         val renderers = DefaultRenderersFactory(this).setEnableDecoderFallback(true)
-        player = ExoPlayer.Builder(this, renderers).setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(30_000).build()
+        // Send the guest-PIN cookie with every video/subtitle request.
+        val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+        cookie?.let { http.setDefaultRequestProperties(mapOf("Cookie" to it)) }
+        player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(http))
+            .setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(30_000).build()
         view = PlayerView(this).apply {
             player = this@PlayerActivity.player
             setShowSubtitleButton(true)
@@ -156,6 +165,7 @@ class PlayerActivity : Activity() {
                 val c = URL("$base/api/progress").openConnection() as HttpURLConnection
                 c.requestMethod = "POST"; c.doOutput = true; c.connectTimeout = 3000; c.readTimeout = 3000
                 c.setRequestProperty("Content-Type", "application/json")
+                cookie?.let { ck -> c.setRequestProperty("Cookie", ck) }
                 c.outputStream.use { it.write(body.toByteArray()) }
                 c.inputStream.close(); c.disconnect()
             } catch (e: Exception) { }

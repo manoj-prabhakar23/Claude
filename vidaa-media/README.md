@@ -49,6 +49,15 @@ The setup page (**localhost only**; it doesn't open from the TV or other devices
 
 Settings are saved in `config.json` next to the app, if you prefer editing by hand (`config.example.json` shows all options).
 
+### Guest PIN (recommended if guests use your Wi-Fi)
+
+On the setup page, enter a **4–8 digit PIN** under **Guest PIN** and click *Set PIN*.
+- Every TV, phone or Fire TV is asked for the PIN **once**, then stays signed in. Use the remote's arrows or number buttons.
+- **This PC never needs the PIN.**
+- The setup page lists **signed-in devices**, so you can sign out one device or all of them. Setting a new PIN signs everyone out.
+- After 5 wrong tries a device is locked out for 1 minute, then for longer and longer (up to an hour).
+- Only a salted hash of the PIN is stored, in `config.json`.
+
 ### 2. On the Hisense VIDAA TV
 
 1. Make sure the TV is on the **same Wi-Fi / network** as the computer.
@@ -155,4 +164,10 @@ To organize a big collection with **Claude Chat**, see **[ORGANIZING.md](ORGANIZ
 - Run options: `node server/server.js [folders…] [--port 8080] [--config path] [--no-usb]`
 - API: `GET /api/library`, `GET /api/folder?id=`, `GET /api/catalog.csv`, `POST /api/rescan`, `GET /media/:id` (direct stream), `GET /remux/:id?t=&a=` (converted stream).
 - Resume positions are stored in `data/state.json`. Generated thumbnails and the probe cache are in `cache/` (safe to delete).
-- The server is meant for your **home network only**. Don't expose port 8080 to the internet.
+- **Security:** the server is meant for your **home network only**. **Never port-forward 8080 on your router.**
+  - It only serves files from your library folders, by an internal ID.
+  - The setup page works only on the PC itself (it checks the loopback address and the Host header, and needs a custom request header).
+  - Guests can be kept out with the PIN.
+  - Video conversions are capped at 3 at a time.
+  - Traffic is plain HTTP inside your home network, which is normal for local media servers.
+- Signed-in devices are stored in `data/devices.json`, as hashes only.

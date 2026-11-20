@@ -32,6 +32,8 @@
     x.open(method, url, true);
     x.onreadystatechange = function () {
       if (x.readyState !== 4) return;
+      // The library has a guest PIN and this device hasn't entered it yet.
+      if (x.status === 401) { location.replace('/pin'); return; }
       var data = null;
       try { data = JSON.parse(x.responseText); } catch (e) { /* not json */ }
       if (cb) cb(x.status >= 200 && x.status < 300 ? null : (x.status || 'network'), data);

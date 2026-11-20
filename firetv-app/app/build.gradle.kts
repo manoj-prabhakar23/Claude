@@ -7,7 +7,7 @@ plugins {
 val webUi = rootProject.file("../vidaa-media/web")
 val webAssetsDir = layout.buildDirectory.dir("generated/hc-assets")
 val copyWebUi by tasks.registering(Copy::class) {
-    from(webUi) { exclude("icon.svg") }
+    from(webUi) { exclude("icon.svg", "admin.html", "pin.html") }
     into(webAssetsDir.map { it.dir("web") })
 }
 
