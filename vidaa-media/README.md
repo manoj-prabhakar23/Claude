@@ -29,29 +29,31 @@ The server scans your folders, works out titles, years, languages, posters and a
 
 ### 1. On the computer that has your drive / USB
 
-1. Install **Node.js 18 or newer** from <https://nodejs.org>.
-2. *(Recommended)* Install **ffmpeg**. It adds poster images taken from the video, plays MKV/AVI files the TV can't open directly, lets you switch audio language, and reads embedded subtitles.
-   - Windows: `winget install ffmpeg`
-   - macOS: `brew install ffmpeg`
-   - Raspberry Pi / Linux: `sudo apt install ffmpeg`
-3. Copy this `vidaa-media` folder to the computer.
-4. Copy `config.example.json` to `config.json` and list your movie and music folders:
-   ```json
-   { "port": 8080, "roots": ["D:\\Movies", "D:\\Music"], "autoUsb": true }
-   ```
-   USB sticks and external drives are added automatically when `autoUsb` is `true`. On Windows that means every drive letter except C:, so leave `roots` empty if your movies are only on USB.
-5. Start it:
-   - **Windows:** double-click `start-windows.bat`
-   - **macOS / Linux / Pi:** `./start.sh`
+**Windows 10/11 (easiest):**
+1. Copy this `vidaa-media` folder to the PC (e.g. `C:\HomeCinema`).
+2. Double-click **`setup-windows.bat`**. It:
+   - installs **Node.js** and **ffmpeg** if they're missing (with Windows' built-in `winget`),
+   - allows your TV through **Windows Firewall** on private networks (Windows asks for permission once),
+   - creates a **"Home Cinema" shortcut** on your desktop,
+   - starts the server and opens the **setup page** in your browser.
+3. On the setup page (**http://localhost:8080/admin**), click **+ Add folder** and pick your movie, TV show and music folders. The library scans right away.
+4. From now on, start Home Cinema with the **desktop shortcut**. Keep its black window open while you watch. Your library opens at **http://localhost:8080** on the PC.
 
-   It prints the address to open, e.g. `http://192.168.1.20:8080`.
-6. If Windows asks about the firewall, allow access on **Private networks**.
+**macOS / Linux / Raspberry Pi:** install Node.js 18+ (and ideally ffmpeg: `brew install ffmpeg` / `sudo apt install ffmpeg`), then run `./start.sh` and add your folders at http://localhost:8080/admin.
+
+The setup page (**localhost only**; it doesn't open from the TV or other devices) also shows:
+- the **address to type on the TV**,
+- scan progress and counts (movies, shows, albums),
+- **USB drives**: turn auto-detection on or off. On Windows every drive letter except C: counts,
+- **Organize with Claude Chat**: export `catalog.csv`, then import the corrected file back. It's saved on that drive, and the previous one is kept as a backup.
+
+Settings are saved in `config.json` next to the app, if you prefer editing by hand (`config.example.json` shows all options).
 
 ### 2. On the Hisense VIDAA TV
 
 1. Make sure the TV is on the **same Wi-Fi / network** as the computer.
 2. Open the TV's **Browser** app (on the VIDAA home screen, under Apps).
-3. Type the address the server printed (e.g. `http://192.168.1.20:8080`).
+3. Type the address shown on the setup page or in the server window (e.g. `http://192.168.1.20:8080`).
 4. **Bookmark it**, or add it to the home screen if your model's browser offers that, so it opens with one click next time.
 
 > **Tip:** give the computer a fixed IP address in your router settings (often called "DHCP reservation") so the bookmark keeps working.
@@ -139,7 +141,8 @@ To organize a big collection with **Claude Chat**, see **[ORGANIZING.md](ORGANIZ
 
 | Problem | Fix |
 |---|---|
-| TV shows "Cannot reach the media server" | Same Wi-Fi? Is the server window still open? Allow Node.js through the firewall. Try the address in a phone browser too. |
+| TV shows "Cannot reach the media server" | Same Wi-Fi? Is the server window still open? Is your Wi-Fi set to **Private** in Windows (Settings → Network & internet → Wi-Fi)? Run `setup-windows.bat` again to add the firewall rule. Try the address in a phone browser too. |
+| "Port 8080 is already in use" | Home Cinema is already running. Open http://localhost:8080, or close the other window. |
 | USB stick doesn't show up | Wait about 10 s, or press **Rescan**. On Windows it must have a drive letter. On Linux/Pi it must be mounted (most desktops do this automatically). |
 | No posters, only colored tiles | Install ffmpeg (for video frames), or add `poster.jpg` files / a `catalog.csv` with a `poster` column. |
 | A movie won't play | Install ffmpeg so the server can convert it. Very old formats (RealMedia etc.) aren't supported. |

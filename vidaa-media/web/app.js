@@ -318,7 +318,7 @@
       if (S.lib.scanning) renderEmpty('Scanning your drives…', 'Your library will appear here in a moment.');
       else renderEmpty('No ' + what + ' found', NATIVE && window.HCAndroid.mode && window.HCAndroid.mode() === 'local'
         ? 'Plug your USB drive into the Fire TV (through an OTG adapter or hub), or press \u2630 Sources to connect to your PC server.'
-        : 'Plug in your USB drive on the computer running the server, or add folders to config.json. Then press Rescan.');
+        : (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'Press \u2699 Setup (top right) to choose your movie and music folders.' : 'Plug in your USB drive on the computer running the server, or add folders with the Setup page on that computer (http://localhost:8080/admin). Then press Rescan.'));
     } else if (S.tab === 'movies') {
       var cw = continueWatching().filter(function (c2) { return c2.kind === 'movie' && (!lang || c2.x.langs.indexOf(lang) >= 0); });
       if (cw.length) {
@@ -769,6 +769,14 @@
   each(qsa($('tabs'), '.tab'), function (t) {
     t.onclick = function () { setTab(t.getAttribute('data-tab')); setFocus(t); };
   });
+  // On the PC itself (http://localhost:8080) offer the setup page.
+  if (!NATIVE && !VEGA && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    var adm = document.createElement('div');
+    adm.className = 'btn small f'; adm.id = 'setupBtn'; adm.style.marginRight = '.8rem';
+    adm.innerHTML = '&#9881; Setup';
+    adm.onclick = function () { location.href = '/admin'; };
+    $('rescanBtn').parentNode.insertBefore(adm, $('rescanBtn'));
+  }
   if (VEGA) {
     var vsrc = document.createElement('div');
     vsrc.className = 'btn small f'; vsrc.id = 'sourcesBtn'; vsrc.style.marginRight = '.8rem';

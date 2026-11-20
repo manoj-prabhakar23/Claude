@@ -20,7 +20,8 @@ const argVal = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] :
 const APP_DIR = path.resolve(__dirname, '..');
 const cfgPath = argVal('--config') || (fs.existsSync(path.join(APP_DIR, 'config.json')) ? path.join(APP_DIR, 'config.json') : null);
 const fileCfg = cfgPath ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
-const cliRoots = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
+const VALUE_FLAGS = ['--config', '--port'];
+const cliRoots = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && VALUE_FLAGS.includes(args[i - 1])));
 const cfg = Object.assign({ port: 8080, roots: [], autoUsb: true, rescanMinutes: 30, ffmpeg: 'ffmpeg', ffprobe: 'ffprobe', cacheDir: path.join(APP_DIR, 'cache'), dataDir: path.join(APP_DIR, 'data') }, fileCfg);
 if (cliRoots.length) cfg.roots = cliRoots;
 if (argVal('--port')) cfg.port = Number(argVal('--port'));
@@ -337,11 +338,120 @@ function catalogCsv(rootLabel) {
   return rows.join('\r\n') + '\r\n';
 }
 
+// ---------- localhost setup page (/admin) ----------
+// Only the PC itself may change settings: the request must come from the loopback address,
+// be addressed to localhost (blocks DNS-rebinding), and carry a custom header that other
+// websites open in the same browser cannot send without a CORS preflight we never allow.
+function isLocalRequest(req) {
+  const ip = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  const host = String(req.headers.host || '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '').toLowerCase();
+  return (ip === '127.0.0.1' || ip === '::1') && (host === 'localhost' || host === '127.0.0.1' || host === '::1');
+}
+function adminAllowed(req) { return isLocalRequest(req) && (req.method === 'GET' || req.headers['x-hc-admin'] === '1'); }
+
+function readRawBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let n = 0;
+    req.on('data', (c) => { n += c.length; if (n > limit) { reject(new Error('too large')); req.destroy(); } else chunks.push(c); });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function tvUrls() {
+  const ips = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address);
+  return ips.map((ip) => `http://${ip}:${cfg.port}`);
+}
+
+function saveConfig() {
+  const target = cfgPath || path.join(APP_DIR, 'config.json');
+  let current = {};
+  try { current = JSON.parse(fs.readFileSync(target, 'utf8')); } catch (e) { /* new file */ }
+  const out = Object.assign(current, { port: cfg.port, roots: cfg.roots, autoUsb: cfg.autoUsb, rescanMinutes: cfg.rescanMinutes });
+  fs.writeFileSync(target, JSON.stringify(out, null, 2));
+  return target;
+}
+
+function listDrivesAndPlaces() {
+  const places = [];
+  if (process.platform === 'win32') {
+    for (let c = 67; c <= 90; c++) { const p = String.fromCharCode(c) + ':\\'; try { fs.readdirSync(p); places.push({ name: p, path: p }); } catch (e) { /* no drive */ } }
+  } else {
+    places.push({ name: '/', path: '/' });
+    for (const p of ['/media', '/mnt', '/Volumes', '/run/media']) if (fs.existsSync(p)) places.push({ name: p, path: p });
+  }
+  const home = os.homedir();
+  for (const sub of ['', 'Videos', 'Movies', 'Music', 'Downloads', 'Desktop']) {
+    const p = path.join(home, sub);
+    if (fs.existsSync(p)) places.push({ name: sub ? sub : 'Home', path: p });
+  }
+  return places;
+}
+
+function browseDir(dir) {
+  if (!dir) return { path: null, parent: null, dirs: listDrivesAndPlaces(), media: 0 };
+  const abs = path.resolve(dir);
+  const entries = fs.readdirSync(abs, { withFileTypes: true });
+  const dirs = entries.filter((e) => { try { return e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('$'); } catch (x) { return false; } })
+    .map((e) => ({ name: e.name, path: path.join(abs, e.name) })).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const media = entries.filter((e) => e.isFile() && /\.(mp4|m4v|mkv|avi|mov|webm|ts|m2ts|wmv|mpg|mpeg|mp3|flac|m4a|aac|ogg|opus|wav)$/i.test(e.name)).length;
+  const parent = path.dirname(abs) === abs ? null : path.dirname(abs);
+  return { path: abs, parent, dirs, media };
+}
+
+async function handleAdmin(req, res, p, u) {
+  if (!adminAllowed(req)) return send(res, 403, 'The setup page only works on the computer running the server: open http://localhost:' + cfg.port + '/admin there.');
+  if (p === '/admin' || p === '/admin/') return serveFile(req, res, path.join(WEB_DIR, 'admin.html'), null, 'no-cache');
+  if (p === '/api/admin/config' && req.method === 'GET') {
+    return json(res, {
+      roots: cfg.roots.map((r) => (typeof r === 'string' ? r : r.path)), autoUsb: cfg.autoUsb, rescanMinutes: cfg.rescanMinutes, port: cfg.port,
+      usbDrives: detectUsbDrives().map((d) => d.path), activeRoots: lib.summary().roots, tvUrls: tvUrls(),
+      ffmpeg: ffmpegOk, ffprobe: lib.prober.available, scanning: lib.scanning, filesScanned: lib.scanProgress.files, summary: lib.summary(),
+      scannedAt: lib.scannedAt, platform: process.platform, configFile: cfgPath || path.join(APP_DIR, 'config.json'),
+    });
+  }
+  if (p === '/api/admin/config' && req.method === 'POST') {
+    const b = await readBody(req);
+    const roots = Array.isArray(b.roots) ? b.roots.map((r) => String(r).trim()).filter(Boolean) : null;
+    if (!roots) return json(res, { error: 'roots must be a list of folders' }, 400);
+    // Only check folders being added now: an existing one may simply be on an unplugged drive.
+    const known = new Set(cfg.roots.map((r) => path.resolve(typeof r === 'string' ? r : r.path)));
+    const missing = roots.filter((r) => { if (known.has(path.resolve(r))) return false; try { return !fs.statSync(r).isDirectory(); } catch (e) { return true; } });
+    if (missing.length) return json(res, { error: 'Folder not found: ' + missing.join(', ') }, 400);
+    cfg.roots = [...new Set(roots.map((r) => path.resolve(r)))];
+    if (typeof b.autoUsb === 'boolean') cfg.autoUsb = b.autoUsb;
+    if (Number.isFinite(b.rescanMinutes) && b.rescanMinutes >= 0) cfg.rescanMinutes = Math.round(b.rescanMinutes);
+    const file = saveConfig();
+    rescan('settings changed').catch(console.error);
+    return json(res, { ok: true, configFile: file });
+  }
+  if (p === '/api/admin/browse') {
+    try { return json(res, browseDir(u.query.path)); } catch (e) { return json(res, { error: 'Cannot open that folder (' + e.code + ')' }, 400); }
+  }
+  if (p === '/api/admin/catalog' && req.method === 'POST') {
+    const root = lib.summary().roots.find((r) => r.path === u.query.root);
+    if (!root) return json(res, { error: 'Choose one of the library folders' }, 400);
+    let buf;
+    try { buf = await readRawBody(req, 20 * 1024 * 1024); } catch (e) { return json(res, { error: 'File too large (20 MB max)' }, 413); }
+    const text = buf.toString('utf8').replace(/^﻿/, '');
+    const { parseCsv } = require('./scanner');
+    const rows = parseCsv(text);
+    if (!rows.length || !rows.some((r) => r.path)) return json(res, { error: 'That file has no "path" column or no rows. Export the catalog first and edit that file.' }, 400);
+    const dest = path.join(root.path, 'catalog.csv');
+    if (fs.existsSync(dest)) fs.copyFileSync(dest, path.join(root.path, `catalog.backup-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`));
+    fs.writeFileSync(dest, '﻿' + text);
+    rescan('catalog imported').catch(console.error);
+    return json(res, { ok: true, rows: rows.length, file: dest });
+  }
+  return send(res, 404, 'Not found');
+}
+
 // ---------- router ----------
 const server = http.createServer(async (req, res) => {
   const u = url.parse(req.url, true);
   const p = decodeURIComponent(u.pathname);
   try {
+    if (p === '/admin' || p === '/admin/' || p === '/admin.html' || p.startsWith('/api/admin/')) return handleAdmin(req, res, p === '/admin.html' ? '/admin' : p, u);
     if (req.method === 'OPTIONS') return send(res, 204, '', null, { 'Access-Control-Allow-Methods': 'GET,POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Private-Network': 'true' });
     if (p === '/api/library') return json(res, libraryPayload());
     if (p === '/api/status') return json(res, { scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, ffmpeg: ffmpegOk, ffprobe: lib.prober.available, summary: lib.summary() });
@@ -396,6 +506,21 @@ server.listen(cfg.port, '0.0.0.0', () => {
   console.log('  On your Hisense TV, open the browser and go to:');
   for (const ip of ips) console.log(`     http://${ip}:${cfg.port}`);
   if (!ips.length) console.log(`     http://localhost:${cfg.port}`);
+  console.log(`  On this computer: http://localhost:${cfg.port}   (setup: http://localhost:${cfg.port}/admin)`);
   console.log('');
   rescan('startup').catch(console.error);
+  // --open: show the app (or the setup page on first run) in this computer's browser
+  if (args.includes('--open')) {
+    const first = !cfg.roots.length;
+    const target = `http://localhost:${cfg.port}/${first ? 'admin' : ''}`;
+    const opener = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', target]] : process.platform === 'darwin' ? ['open', [target]] : ['xdg-open', [target]];
+    try { spawn(opener[0], opener[1], { stdio: 'ignore', detached: true }).unref(); } catch (e) { /* no browser */ }
+  }
+});
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${cfg.port} is already in use - is Home Cinema already running? Open http://localhost:${cfg.port}\n`);
+    process.exit(1);
+  }
+  throw e;
 });
