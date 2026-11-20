@@ -14,7 +14,7 @@ The screens are the same as on the VIDAA TV: language filter chips, movie poster
 | Device | Works? |
 |---|---|
 | Fire TV Stick (2nd gen or later), Stick Lite, Stick 4K, Stick 4K Max (1st & 2nd gen), Fire TV Cube | ✅ These run **Fire OS** (Android-based). Apps can be installed from outside the Amazon Appstore. |
-| Fire TV Stick 4K Select (2025) and other **Vega OS** devices | ❌ Vega OS isn't Android and doesn't allow installing APK files. Open the VIDAA web version in its browser instead, if it has one, or use a Fire OS stick. |
+| Fire TV Stick 4K Select (2025) and other **Vega OS** devices | ❌ Not this APK, because Vega OS isn't Android. Use the **Vega version in [`../vega-app`](../vega-app/README.md)** instead. |
 | Android TV / Google TV boxes, Chromecast with Google TV, Nvidia Shield | ✅ The same APK works. |
 
 To check yours: **Settings → My Fire TV → About**. Fire OS shows a version like *Fire OS 7.x* or *8.x*.
