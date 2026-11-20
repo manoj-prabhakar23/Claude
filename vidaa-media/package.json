@@ -1,0 +1,12 @@
+{
+  "name": "vidaa-media",
+  "version": "1.0.0",
+  "description": "TV-friendly movie & music library for Hisense VIDAA TVs, streamed from your local drive or USB",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "start:config": "node server/server.js --config config.json"
+  },
+  "engines": { "node": ">=16" },
+  "license": "MIT"
+}

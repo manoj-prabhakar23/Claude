@@ -1,0 +1,14 @@
+{
+  "port": 8080,
+  "roots": [
+    "D:\\Movies",
+    "D:\\Music",
+    "/home/me/Videos"
+  ],
+  "autoUsb": true,
+  "rescanMinutes": 30,
+  "ffmpeg": "ffmpeg",
+  "ffprobe": "ffprobe",
+  "cacheDir": "./cache",
+  "dataDir": "./data"
+}

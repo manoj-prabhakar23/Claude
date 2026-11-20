@@ -1,0 +1,128 @@
+/* 10-foot UI for Hisense VIDAA TVs. 1rem = 16px on a 1920px-wide screen. */
+:root { --bg: #0d1016; --panel: #171b24; --panel2: #202634; --text: #eef1f6; --muted: #9aa3b5; --accent: #f5b335; --accent2: #3ec7c2; --focus: #ffffff; }
+html { font-size: calc(100vw / 120); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI", Roboto, "Noto Sans", "Noto Sans Tamil", "Noto Sans Devanagari", Arial, sans-serif; overflow: hidden; cursor: default; }
+.hidden { display: none !important; }
+
+#app { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
+#top { display: flex; align-items: center; height: 5.5rem; padding: 0 3rem; flex: none; background: linear-gradient(#0d1016, rgba(13,16,22,.85)); }
+.brand { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em; width: 18rem; white-space: nowrap; }
+.logo { display: inline-block; width: 2.4rem; height: 2.4rem; line-height: 2.4rem; text-align: center; border-radius: .6rem; background: var(--accent); color: #111; font-size: 1.1rem; margin-right: .5rem; vertical-align: middle; }
+#tabs { display: flex; flex: 1; }
+.tab { font-size: 1.45rem; padding: .55rem 1.5rem; margin-right: .6rem; border-radius: 2rem; color: var(--muted); border: .15rem solid transparent; }
+.tab.active { color: var(--text); background: var(--panel2); }
+.right { display: flex; align-items: center; }
+#clock { font-size: 1.5rem; margin-left: 1.5rem; color: var(--muted); min-width: 5rem; text-align: right; }
+
+#filters { flex: none; padding: .4rem 3rem .8rem; white-space: nowrap; overflow: hidden; }
+.chip { display: inline-block; font-size: 1.15rem; padding: .45rem 1.2rem; margin: 0 .5rem .3rem 0; border-radius: 2rem; background: var(--panel); color: var(--muted); border: .15rem solid transparent; }
+.chip.active { background: var(--accent); color: #141414; font-weight: 600; }
+.chip .n { opacity: .7; margin-left: .35rem; font-size: .95rem; }
+.chip.sort { background: var(--panel2); color: var(--text); }
+.sep { display: inline-block; width: .15rem; height: 1.8rem; background: #333a49; margin: 0 1rem 0 .5rem; vertical-align: middle; }
+
+#content { flex: 1; overflow: hidden; padding: 0 2.4rem 8rem 3rem; position: relative; }
+.section-title { font-size: 1.5rem; font-weight: 600; margin: 1.2rem 0 .8rem; color: var(--text); }
+.section-title .count { color: var(--muted); font-weight: 400; margin-left: .6rem; font-size: 1.2rem; }
+.grid { display: flex; flex-wrap: wrap; margin-right: -1.2rem; }
+.row { display: flex; overflow: hidden; padding: .6rem 0 .4rem; margin-left: -.6rem; padding-left: .6rem; }
+.row .tile { flex: none; }
+
+.tile { position: relative; width: 13rem; margin: 0 1.2rem 1.6rem 0; border-radius: .7rem; transition: transform .12s ease-out; }
+.tile .art { position: relative; width: 100%; padding-top: 150%; border-radius: .7rem; overflow: hidden; background: var(--panel2); border: .2rem solid transparent; }
+.tile.square .art { padding-top: 100%; }
+.tile.wide { width: 22rem; } .tile.wide .art { padding-top: 56.25%; }
+.tile img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
+.tile img.loaded { opacity: 1; }
+.tile .badges { position: absolute; top: .5rem; left: .5rem; right: .5rem; display: flex; flex-wrap: wrap; }
+.badge { display: inline-block; font-size: .85rem; font-weight: 700; padding: .15rem .5rem; margin: 0 .3rem .3rem 0; border-radius: .35rem; background: rgba(0,0,0,.72); color: #fff; letter-spacing: .02em; }
+.badge.lang { background: rgba(62,199,194,.92); color: #062523; }
+.badge.res { position: absolute; right: .5rem; top: .5rem; background: rgba(245,179,53,.95); color: #1a1200; margin: 0; }
+.tile .name { font-size: 1.15rem; margin-top: .55rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .sub { font-size: .95rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: .15rem; }
+.tile .prog { position: absolute; left: 0; right: 0; bottom: 0; height: .4rem; background: rgba(0,0,0,.6); }
+.tile .prog i { display: block; height: 100%; background: var(--accent); }
+.tile .count { position: absolute; bottom: .5rem; right: .5rem; }
+
+/* focus */
+.f.focus { outline: none; }
+.tile.focus { transform: scale(1.08); z-index: 2; }
+.tile.focus .art { border-color: var(--focus); box-shadow: 0 .6rem 2.2rem rgba(0,0,0,.7), 0 0 0 .2rem rgba(255,255,255,.25); }
+.tile.focus .name { color: #fff; font-weight: 600; }
+.tab.focus, .chip.focus, .btn.focus { border-color: var(--focus); color: #fff; box-shadow: 0 0 1.2rem rgba(255,255,255,.25); }
+.chip.active.focus { color: #141414; }
+
+.btn { display: inline-block; font-size: 1.3rem; padding: .8rem 1.8rem; border-radius: .6rem; background: var(--panel2); color: var(--text); border: .18rem solid transparent; margin: 0 .8rem .8rem 0; white-space: nowrap; }
+.btn.primary { background: var(--accent); color: #141414; font-weight: 700; }
+.btn.primary.focus { color: #141414; transform: scale(1.04); }
+.btn.small { font-size: 1.1rem; padding: .45rem 1.1rem; margin: 0; }
+.btn.icon { font-size: 1.3rem; padding: .4rem .9rem; margin: 0 0 0 .5rem; }
+
+.empty { margin: 6rem auto; max-width: 60rem; text-align: center; color: var(--muted); font-size: 1.4rem; line-height: 1.6; }
+.empty h2 { color: var(--text); font-size: 2rem; margin-bottom: 1rem; }
+.breadcrumb { font-size: 1.2rem; color: var(--muted); margin: 1rem 0 .6rem; }
+.breadcrumb b { color: var(--text); }
+
+/* detail layer */
+.layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--bg); overflow: hidden; }
+.backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: .35; }
+.backdrop:after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, #0d1016 30%, rgba(13,16,22,.55) 70%, rgba(13,16,22,.3)), linear-gradient(0deg, #0d1016 5%, transparent 45%); }
+.dwrap { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; padding: 5rem 5rem 0; }
+.dposter { flex: none; width: 22rem; margin-right: 3.5rem; }
+.dposter .art { position: relative; padding-top: 150%; border-radius: .9rem; overflow: hidden; box-shadow: 0 1rem 3rem rgba(0,0,0,.7); background: var(--panel2); }
+.dposter.square .art { padding-top: 100%; }
+.dposter img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+.dinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dtitle { font-size: 3.2rem; font-weight: 700; line-height: 1.1; margin: .5rem 0 .8rem; }
+.dmeta { font-size: 1.3rem; color: var(--muted); margin-bottom: 1rem; }
+.dmeta span + span:before { content: "\00b7"; margin: 0 .6rem; }
+.dlangs { margin-bottom: 1.2rem; }
+.dlangs .badge { font-size: 1.05rem; padding: .3rem .8rem; }
+.dplot { font-size: 1.3rem; line-height: 1.55; color: #cfd5df; max-width: 62rem; margin-bottom: 1.6rem; max-height: 10.2rem; overflow: hidden; }
+.dactions { margin-bottom: 1rem; }
+.list { flex: 1; overflow: hidden; padding-bottom: 6rem; margin-left: -.4rem; padding-left: .4rem; padding-right: 1rem; }
+.season { font-size: 1.3rem; color: var(--accent); margin: 1.2rem 0 .5rem; font-weight: 600; }
+.lrow { display: flex; align-items: center; font-size: 1.3rem; padding: .75rem 1.2rem; border-radius: .6rem; border: .18rem solid transparent; background: rgba(255,255,255,.03); margin-bottom: .4rem; }
+.lrow .no { width: 3.5rem; color: var(--muted); flex: none; }
+.lrow .lt { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .ls { color: var(--muted); margin-left: 1rem; flex: none; font-size: 1.1rem; }
+.lrow .lp { width: 8rem; height: .35rem; background: #333; margin-left: 1rem; flex: none; border-radius: .2rem; overflow: hidden; }
+.lrow .lp i { display: block; height: 100%; background: var(--accent); }
+.lrow.focus { border-color: var(--focus); background: var(--panel2); }
+.lrow.playing .lt { color: var(--accent); font-weight: 600; }
+.lrow.playing .no:before { content: "\25B6 "; color: var(--accent); }
+
+/* video player */
+#player { background: #000; z-index: 30; }
+#video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; }
+video::cue { font-size: 2.2rem; background: rgba(0,0,0,.55); }
+#osd { position: absolute; top: 0; left: 0; right: 0; bottom: 0; transition: opacity .3s; pointer-events: none; }
+#osd.off { opacity: 0; }
+.osdTop { padding: 2.5rem 4rem 5rem; background: linear-gradient(rgba(0,0,0,.8), transparent); }
+#osdTitle { font-size: 2.2rem; font-weight: 700; }
+#osdInfo { font-size: 1.2rem; color: #ccc; margin-top: .4rem; }
+.osdBottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 6rem 4rem 2.2rem; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+.osdTimes { display: flex; justify-content: space-between; font-size: 1.3rem; margin-bottom: .6rem; }
+#osdState { color: var(--accent); font-weight: 600; }
+.osdBar { position: relative; height: .55rem; background: rgba(255,255,255,.2); border-radius: .3rem; }
+.osdBar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: .3rem; }
+#osdBuf { background: rgba(255,255,255,.3); }
+#osdProg { background: var(--accent); }
+#osdSeek { position: absolute; top: -.55rem; width: 1.6rem; height: 1.6rem; margin-left: -.8rem; border-radius: 50%; background: #fff; display: none; }
+.osdHints { font-size: 1.05rem; color: #aaa; margin-top: 1rem; }
+#spinner { position: absolute; left: 50%; top: 50%; width: 5rem; height: 5rem; margin: -2.5rem; border: .45rem solid rgba(255,255,255,.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+#spinner.on { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* music mini player */
+#mini { position: absolute; left: 3rem; right: 3rem; bottom: 1.5rem; height: 6rem; display: flex; align-items: center; padding: .7rem 1.2rem; background: rgba(32,38,52,.96); border-radius: 1rem; box-shadow: 0 .6rem 2rem rgba(0,0,0,.6); z-index: 15; }
+#miniArt { width: 4.6rem; height: 4.6rem; border-radius: .5rem; object-fit: cover; background: var(--panel); }
+.miniText { flex: 1; min-width: 0; margin: 0 1.2rem; }
+#miniTitle { font-size: 1.3rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#miniSub { font-size: 1.05rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: .3rem; background: rgba(255,255,255,.15); margin-top: .5rem; border-radius: .2rem; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent2); }
+
+#toast { position: absolute; left: 50%; bottom: 9rem; transform: translateX(-50%); background: rgba(20,24,32,.95); color: #fff; font-size: 1.3rem; padding: .9rem 1.8rem; border-radius: .7rem; z-index: 50; opacity: 0; transition: opacity .25s; pointer-events: none; border: .1rem solid #333a49; white-space: nowrap; }
+#toast.on { opacity: 1; }
