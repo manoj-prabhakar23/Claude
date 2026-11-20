@@ -12,6 +12,9 @@
 
   // Running inside the Fire TV / Android app? It injects window.HCAndroid and plays video natively.
   var NATIVE = !!window.HCAndroid;
+  // Running inside the Fire TV Vega OS app (Fire TV Stick 4K Select)? It provides ReactNativeWebView.
+  var VEGA = !NATIVE && !!window.ReactNativeWebView;
+  function vegaSend(type) { try { window.ReactNativeWebView.postMessage(JSON.stringify({ type: type })); } catch (e) { /* not in Vega */ } }
 
   // ---------------------------------------------------------------- utils
   function $(id) { return document.getElementById(id); }
@@ -697,6 +700,7 @@
     // Already on the tabs: leave the app. Installed VIDAA apps run full-screen without
     // a browser bar and must close themselves; in a normal browser tab this is ignored.
     stopMusic();
+    if (VEGA) { vegaSend('exit'); return false; }
     try { window.close(); } catch (e) { /* not allowed */ }
     return false;
   }
@@ -765,6 +769,13 @@
   each(qsa($('tabs'), '.tab'), function (t) {
     t.onclick = function () { setTab(t.getAttribute('data-tab')); setFocus(t); };
   });
+  if (VEGA) {
+    var vsrc = document.createElement('div');
+    vsrc.className = 'btn small f'; vsrc.id = 'sourcesBtn'; vsrc.style.marginRight = '.8rem';
+    vsrc.innerHTML = '&#9776; Server';
+    vsrc.onclick = function () { vegaSend('sources'); };
+    $('rescanBtn').parentNode.insertBefore(vsrc, $('rescanBtn'));
+  }
   if (NATIVE && window.HCAndroid.openSources) {
     var src = document.createElement('div');
     src.className = 'btn small f'; src.id = 'sourcesBtn'; src.style.marginRight = '.8rem';

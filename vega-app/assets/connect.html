@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Cinema</title>
+<style>
+  html { font-size: calc(100vw / 120); }
+  html, body { margin: 0; height: 100%; background: #0d1016; color: #eef1f6; font-family: "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; }
+  .wrap { max-width: 64rem; margin: 9rem auto 0; padding: 0 3rem; }
+  .logo { display: inline-block; width: 3.4rem; height: 3.4rem; line-height: 3.4rem; text-align: center; border-radius: .8rem; background: #f5b335; color: #111; font-size: 1.6rem; vertical-align: middle; margin-right: .8rem; }
+  h1 { font-size: 2.8rem; margin: 0 0 1.4rem; }
+  p { font-size: 1.4rem; color: #9aa3b5; line-height: 1.5; margin: 0 0 1.6rem; }
+  input { width: 100%; box-sizing: border-box; font-size: 2rem; padding: 1rem 1.4rem; border-radius: .8rem; border: .2rem solid #333a49; background: #171b24; color: #fff; outline: none; }
+  .btn { display: inline-block; font-size: 1.5rem; padding: .9rem 2rem; border-radius: .7rem; background: #202634; color: #eef1f6; border: .2rem solid transparent; margin: 1.6rem 1rem 0 0; }
+  .btn.primary { background: #f5b335; color: #141414; font-weight: 700; }
+  .focus { border-color: #fff !important; box-shadow: 0 0 1.4rem rgba(255,255,255,.3); }
+  #msg { font-size: 1.4rem; margin-top: 2rem; min-height: 2rem; color: #3ec7c2; }
+  #msg.err { color: #ff8a8a; }
+  .hint { font-size: 1.15rem; color: #6f7890; margin-top: 3rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="logo">&#9654;</span>Home Cinema</h1>
+  <p>Enter the address shown in the Home Cinema server window on your PC, or let the app search your Wi-Fi.</p>
+  <input id="addr" class="f" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="192.168.1.20:8080">
+  <div>
+    <span class="btn primary f" id="connect">Connect</span>
+    <span class="btn f" id="search">&#128269; Search my network</span>
+  </div>
+  <div id="msg"></div>
+  <div class="hint">The PC server must be running (start-windows.bat) and on the same Wi-Fi as this Fire TV.<br>Press OK on the address box to type with the on-screen keyboard.</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'hc.server';
+  var params = {};
+  location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) params[p[0]] = decodeURIComponent(p[1] || ''); });
+  var addr = document.getElementById('addr'), msg = document.getElementById('msg');
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
+
+  function say(text, err) { msg.textContent = text; msg.className = err ? 'err' : ''; }
+  function normalize(v) {
+    v = (v || '').trim().replace(/\/+$/, '');
+    if (!v) return null;
+    if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
+    if (!/:\d+$/.test(v.replace(/^https?:\/\//i, ''))) v += ':8080';
+    return v;
+  }
+  function go(url) {
+    try { localStorage.setItem(KEY, url); } catch (e) { /* ignore */ }
+    say('Connecting to ' + url + ' …');
+    location.replace(url + '/');
+  }
+
+  // ---- auto-connect to the last server
+  if (saved) addr.value = saved.replace(/^http:\/\//, '');
+  if (params.error) say('Could not reach ' + (saved || 'the server') + '. Is the PC server running?', true);
+  else if (saved && !params.change) { go(saved); }
+
+  // ---- focus handling for the remote
+  var items = Array.prototype.slice.call(document.querySelectorAll('.f'));
+  var cur = 0;
+  function focus(i) {
+    items.forEach(function (el) { el.classList.remove('focus'); });
+    cur = Math.max(0, Math.min(items.length - 1, i));
+    items[cur].classList.add('focus');
+    if (items[cur] === addr) addr.focus(); else addr.blur();
+  }
+  focus(saved && params.error ? 1 : 0);
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode;
+    if (k === 38) { e.preventDefault(); focus(cur === 0 ? 0 : 0); }
+    else if (k === 40) { e.preventDefault(); if (cur === 0) focus(1); }
+    else if (k === 37 && cur > 0) { e.preventDefault(); focus(cur === 1 ? 1 : cur - 1); }
+    else if (k === 39 && cur > 0) { e.preventDefault(); focus(cur + 1); }
+    else if (k === 13) {
+      if (items[cur] === addr) { if (document.activeElement !== addr) { addr.focus(); } else { connect(); } }
+      else { e.preventDefault(); items[cur].onclick(); }
+    } else if (k === 27 || k === 8 && document.activeElement !== addr) {
+      e.preventDefault();
+      try { window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'exit' })); } catch (err) { /* not in Vega */ }
+    }
+  });
+
+  function connect() {
+    var url = normalize(addr.value);
+    if (!url) { say('Type the server address first, e.g. 192.168.1.20:8080', true); focus(0); return; }
+    go(url);
+  }
+  document.getElementById('connect').onclick = connect;
+
+  // ---- search the local network for a Home Cinema server on port 8080
+  function probe(ip, cb) {
+    var x = new XMLHttpRequest(), done = false;
+    function fin(ok) { if (!done) { done = true; cb(ok); } }
+    try {
+      x.open('GET', 'http://' + ip + ':8080/api/status', true);
+      x.timeout = 1500;
+      x.onload = function () { fin(x.status === 200 && x.responseText.indexOf('scanning') >= 0); };
+      x.onerror = x.ontimeout = function () { fin(false); };
+      x.send();
+    } catch (e) { fin(false); }
+  }
+  document.getElementById('search').onclick = function () {
+    var prefixes = [];
+    var m = saved && saved.match(/(\d+\.\d+\.\d+)\.\d+/);
+    if (m) prefixes.push(m[1]);
+    // common home router ranges (incl. JioFiber 192.168.29.x and Xiaomi 192.168.31.x)
+    ['192.168.1', '192.168.0', '192.168.29', '192.168.31', '192.168.68', '192.168.100', '192.168.2', '192.168.50', '10.0.0', '10.0.1'].forEach(function (p) { if (prefixes.indexOf(p) < 0) prefixes.push(p); });
+    var queue = [];
+    prefixes.forEach(function (p) { for (var i = 1; i < 255; i++) queue.push(p + '.' + i); });
+    var found = false, active = 0, checked = 0, total = queue.length;
+    say('Searching your network…');
+    function next() {
+      while (!found && active < 48 && queue.length) {
+        var ip = queue.shift();
+        active++;
+        (function (ip) {
+          probe(ip, function (ok) {
+            active--; checked++;
+            if (ok && !found) { found = true; addr.value = ip + ':8080'; say('Found Home Cinema at ' + ip + ':8080 — press Connect'); focus(1); return; }
+            if (!found) { if (checked % 64 === 0) say('Searching your network… ' + Math.round(checked / total * 100) + '%'); if (queue.length) next(); else if (!active) say('No server found. Type the address shown on your PC.', true); }
+          });
+        })(ip);
+      }
+    }
+    next();
+  };
+})();
+</script>
+</body>
+</html>

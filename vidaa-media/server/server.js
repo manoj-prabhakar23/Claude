@@ -342,7 +342,7 @@ const server = http.createServer(async (req, res) => {
   const u = url.parse(req.url, true);
   const p = decodeURIComponent(u.pathname);
   try {
-    if (req.method === 'OPTIONS') return send(res, 204, '', null, { 'Access-Control-Allow-Methods': 'GET,POST', 'Access-Control-Allow-Headers': 'Content-Type' });
+    if (req.method === 'OPTIONS') return send(res, 204, '', null, { 'Access-Control-Allow-Methods': 'GET,POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Private-Network': 'true' });
     if (p === '/api/library') return json(res, libraryPayload());
     if (p === '/api/status') return json(res, { scanning: lib.scanning, filesScanned: lib.scanProgress.files, version: lib.scannedAt, ffmpeg: ffmpegOk, ffprobe: lib.prober.available, summary: lib.summary() });
     if (p === '/api/folder') { const f = folderPayload(u.query.id); return f ? json(res, f) : json(res, { error: 'not found' }, 404); }
